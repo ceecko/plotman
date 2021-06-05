@@ -4,6 +4,8 @@ import os
 import random
 import re
 import readline  # For nice CLI
+import requests
+import socket
 import subprocess
 import sys
 import time
@@ -72,6 +74,34 @@ def phases_permit_new_job(phases, d, sched_cfg, dir_cfg):
 
     return True
 
+def get_job_from_api():
+    try:
+        r = requests.post(
+            os.getenv('API_URL', 'http://localhost'),
+            data={'hostname': socket.gethostname()},
+            headers={'x-chia-auth': os.getenv('API_KEY', '')},
+            timeout=(5, 20), # (connection timeout, read timeout)
+        )
+    except requests.RequestException as e:
+        print(e)
+        return (False, 'connection error')
+
+    if r.status_code != 200:
+        return (False, 'invalid response from API (%d)' % r.status_code)
+
+    try:
+        data = r.json()
+    except:
+        print('Invalid JSON response. Body:')
+        print(r.text())
+        return (False, 'could not parse json')
+
+    dstdir = data.get('dstDir')
+    if not dstdir:
+        return (False, 'no job available in API')
+    
+    return (str(dstdir), False)
+
 def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
     jobs = job.Job.get_running_jobs(dir_cfg.log)
 
@@ -109,6 +139,12 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
             logfile = os.path.join(
                 dir_cfg.log, pendulum.now().isoformat(timespec='microseconds').replace(':', '_') + '.log'
             )
+
+            api_response = get_job_from_api()
+            if not api_response[0]:
+                return (False, api_response)
+            
+            dstdir += '/%s' % api_response[0]
 
             plot_args = ['chia', 'plots', 'create',
                     '-k', str(plotting_cfg.k),
