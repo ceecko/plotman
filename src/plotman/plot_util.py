@@ -48,14 +48,15 @@ def split_path_prefix(items):
 def list_k32_plots(d):
     'List completed k32 plots in a directory (not recursive)'
     plots = []
-    for plot in os.listdir(d):
-        if re.match(r'^plot-k32-.*plot$', plot):
-            plot = os.path.join(d, plot)
-            try:
-                if os.stat(plot).st_size > (0.95 * get_k32_plotsize()):
-                    plots.append(plot)
-            except FileNotFoundError:
-                continue
+    for root, dirs, files in os.walk(d):
+        for plot in files:
+            if re.match(r'^plot-k32-.*plot$', plot):
+                plot = os.path.join(root, plot)
+                try:
+                    if os.stat(plot).st_size > (0.95 * get_k32_plotsize()):
+                        plots.append(plot)
+                except FileNotFoundError:
+                    continue
     
     return plots
 
