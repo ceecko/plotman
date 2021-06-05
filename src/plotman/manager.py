@@ -146,6 +146,12 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
             
             dstdir += '/%s' % api_response[0]
 
+            # Create destination directory
+            try:
+                os.mkdir(dstdir)
+            except FileExistsError:
+                pass
+
             plot_args = ['chia', 'plots', 'create',
                     '-k', str(plotting_cfg.k),
                     '-r', str(plotting_cfg.n_threads),
