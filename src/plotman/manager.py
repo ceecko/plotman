@@ -96,11 +96,19 @@ def get_job_from_api():
         print(r.text())
         return (False, 'could not parse json')
 
-    dstdir = data.get('dstDir')
+    dstdir = str(data.get('dstDir'))
     if not dstdir:
         return (False, 'no job available in API')
     
-    return (str(dstdir), False)
+    farmer_key = str(data.get('farmerKey'))
+    if not farmer_key:
+        return (False, 'no farmer key provided (%s)' % farmer_key)
+
+    pool_key = str(data.get('poolKey'))
+    if not pool_key:
+        return (False, 'no pool key provided (%s)' % pool_key)
+
+    return ((dstdir, farmer_key, pool_key), False)
 
 def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
     jobs = job.Job.get_running_jobs(dir_cfg.log)
@@ -140,11 +148,13 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
                 dir_cfg.log, pendulum.now().isoformat(timespec='microseconds').replace(':', '_') + '.log'
             )
 
+            # Get config from API
             api_response = get_job_from_api()
             if not api_response[0]:
                 return (False, api_response)
             
-            dstdir += '/%s' % api_response[0]
+            (api_dstdir, farmer_key, pool_key) = api_response[0]
+            dstdir += '/%s' % api_dstdir
 
             # Create destination directory
             try:
@@ -170,6 +180,12 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
             if dir_cfg.tmp2 is not None:
                 plot_args.append('-2')
                 plot_args.append(dir_cfg.tmp2)
+
+            # Add farmer and pool key
+            plot_args.append('-f')
+            plot_args.append(farmer_key)
+            plot_args.append('-p')
+            plot_args.append(pool_key)
 
             logmsg = ('Starting plot job: %s ; logging to %s' % (' '.join(plot_args), logfile))
 
