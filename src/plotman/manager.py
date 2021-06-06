@@ -96,15 +96,15 @@ def get_job_from_api():
         print(r.text())
         return (False, 'could not parse json')
 
-    dstdir = str(data.get('dstDir'))
+    dstdir = data.get('dstDir')
     if not dstdir:
         return (False, 'no job available in API')
     
-    farmer_key = str(data.get('farmerKey'))
+    farmer_key = data.get('farmerKey')
     if not farmer_key:
         return (False, 'no farmer key provided (%s)' % farmer_key)
 
-    pool_key = str(data.get('poolKey'))
+    pool_key = data.get('poolKey')
     if not pool_key:
         return (False, 'no pool key provided (%s)' % pool_key)
 
