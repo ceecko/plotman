@@ -3,6 +3,8 @@ import operator
 import os
 import random
 import re
+import requests
+import socket
 import subprocess
 import sys
 import time
@@ -73,6 +75,45 @@ def phases_permit_new_job(phases: typing.List[job.Phase], d: str, sched_cfg: plo
 
     return True
 
+def get_job_from_api(plotterType: str) -> typing.Union[typing.Tuple[typing.Tuple[str, str, str], bool], typing.Tuple[bool, str]]:
+    try:
+        r = requests.post(
+            os.getenv('API_URL', 'http://localhost'),
+            data={
+                'hostname': socket.gethostname(),
+                'type': plotterType,
+            },
+            headers={'x-chia-auth': os.getenv('API_KEY', '')},
+            timeout=(5, 20), # (connection timeout, read timeout)
+        )
+    except requests.RequestException as e:
+        print(e)
+        return (False, 'connection error')
+
+    if r.status_code != 200:
+        return (False, 'invalid response from API (%d)' % r.status_code)
+
+    try:
+        data = r.json()
+    except:
+        print('Invalid JSON response. Body:')
+        print(r.text())
+        return (False, 'could not parse json')
+
+    dstdir = data.get('dstDir')
+    if not dstdir:
+        return (False, 'no job available in API')
+
+    farmer_key = data.get('farmerKey')
+    if not farmer_key:
+        return (False, 'no farmer key provided (%s)' % farmer_key)
+
+    pool_key = data.get('poolKey')
+    if not pool_key:
+        return (False, 'no pool key provided (%s)' % pool_key)
+
+    return ((dstdir, farmer_key, pool_key), False)
+
 def maybe_start_new_plot(dir_cfg: plotman.configuration.Directories, sched_cfg: plotman.configuration.Scheduling, plotting_cfg: plotman.configuration.Plotting, log_cfg: plotman.configuration.Logging) -> typing.Tuple[bool, str]:
     jobs = job.Job.get_running_jobs(log_cfg.plots)
 
@@ -121,6 +162,19 @@ def maybe_start_new_plot(dir_cfg: plotman.configuration.Directories, sched_cfg: 
 
             log_file_path = log_cfg.create_plot_log_path(time=pendulum.now())
 
+            api_response = get_job_from_api('madmax' if plotting_cfg.type == "madmax" else '')
+            if not api_response[0]:
+                return (False, api_response)
+
+            (api_dstdir, farmer_key, pool_key) = api_response[0]
+            dstdir += '/%s' % api_dstdir
+
+            # Create destination directory
+            try:
+                os.mkdir(dstdir)
+            except FileExistsError:
+                pass
+
             plot_args: typing.List[str]
             if plotting_cfg.type == "madmax":
                 if plotting_cfg.madmax is None:
@@ -165,6 +219,12 @@ def maybe_start_new_plot(dir_cfg: plotman.configuration.Directories, sched_cfg: 
                 plot_args.append('-p')
                 plot_args.append(plotting_cfg.pool_pk)
             
+            # Add farmer and pool key
+            plot_args.append('-f')
+            plot_args.append(farmer_key)
+            plot_args.append('-p')
+            plot_args.append(pool_key)
+
 
 
             logmsg = ('Starting plot job: %s ; logging to %s' % (' '.join(plot_args), log_file_path))
