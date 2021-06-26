@@ -212,12 +212,12 @@ def maybe_start_new_plot(dir_cfg: plotman.configuration.Directories, sched_cfg: 
                 if dir_cfg.tmp2 is not None:
                     plot_args.append('-2')
                     plot_args.append(dir_cfg.tmp2)
-            if plotting_cfg.farmer_pk is not None:
-                plot_args.append('-f')
-                plot_args.append(plotting_cfg.farmer_pk)
-            if plotting_cfg.pool_pk is not None:
-                plot_args.append('-p')
-                plot_args.append(plotting_cfg.pool_pk)
+            # if plotting_cfg.farmer_pk is not None:
+            #     plot_args.append('-f')
+            #     plot_args.append(plotting_cfg.farmer_pk)
+            # if plotting_cfg.pool_pk is not None:
+            #     plot_args.append('-p')
+            #     plot_args.append(plotting_cfg.pool_pk)
             
             # Add farmer and pool key
             plot_args.append('-f')
