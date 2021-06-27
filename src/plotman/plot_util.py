@@ -56,13 +56,14 @@ def split_path_prefix(items: typing.List[str]) -> typing.Tuple[str, typing.List[
 
 def list_k32_plots(d: str) -> typing.List[str]:
     'List completed k32 plots in a directory (not recursive)'
+    d = d if d.endswith('/') else (d + '/')
     plots = []
     for root, dirs, files in os.walk(d):
         for plot in files:
             if re.match(r'^plot-k32-.*plot$', plot):
                 # This ensures the relative path to plot is joined by /./
                 # Rsync uses it to keep directory structure via -R parameter
-                plot = os.path.join(d+'/', '.', root[len(d)+1:], plot)
+                plot = os.path.join(d, '.', root[len(d):], plot)
                 try:
                     if os.stat(plot).st_size > (0.95 * get_k32_plotsize()):
                         plots.append(plot)
