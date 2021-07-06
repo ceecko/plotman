@@ -52,19 +52,24 @@ def split_path_prefix(items: typing.List[str]) -> typing.Tuple[str, typing.List[
         return (prefix, remainders)
 
 def list_plots(d: str) -> typing.List[str]:
-    'List completed plots in a directory (not recursive)'
+    'List completed k32 plots in a directory (not recursive)'
+    d = d if d.endswith('/') else (d + '/')
     plots = []
-    for plot in os.listdir(d):
-        matches = re.search(r"^plot-k(\d*)-.*plot$", plot)
-        if matches is not None:
-            grps = matches.groups()
-            plot_k = int(grps[0])
-            plot = os.path.join(d, plot)
-            try:
-                if os.stat(plot).st_size > (0.95 * get_plotsize(plot_k)):
-                    plots.append(plot)
-            except FileNotFoundError:
-                continue
+    for root, dirs, files in os.walk(d):
+        for plot in files:
+            matches = re.search(r"^plot-k(\d*)-.*plot$", plot)
+            if matches is not None:
+                grps = matches.groups()
+                plot_k = int(grps[0])
+                # This ensures the relative path to plot is joined by /./
+                # Rsync uses it to keep directory structure via -R parameter
+                plot = os.path.join(d, '.', root[len(d):], plot)
+                try:
+                    if os.stat(plot).st_size > (0.95 * get_plotsize(plot_k)):
+                        plots.append(plot)
+                except FileNotFoundError:
+                    continue
+
     return plots
 
 def column_wrap(
