@@ -168,15 +168,25 @@ def maybe_start_new_plot(dir_cfg: plotman.configuration.Directories, sched_cfg: 
             else:
                 # Select the dst dir least recently selected
                 dir2ph = { d:ph for (d, ph) in dstdirs_to_youngest_phase(jobs).items()
-                        if d in dst_dirs and ph is not None}
-                unused_dirs = [d for d in dst_dirs if d not in dir2ph.keys()]
+                        if len([x for x in dst_dirs if d.startswith(x)]) > 0 and ph is not None}
+                unused_dirs = [d for d in dst_dirs if len([x for x in dir2ph.keys() if x.startswith(d)]) == 0]
                 dstdir = ''
                 if unused_dirs:
                     dstdir = random.choice(unused_dirs)
                 else:
                     def key(key: str) -> job.Phase:
                         return dir2ph[key]
-                    dstdir = max(dir2ph, key=key)
+                    max_dstdir = max(dir2ph, key=key)
+                    
+                    # Find proper destination directory
+                    for d in dst_dirs:
+                        if max_dstdir.startswith(d):
+                            dstdir = d
+                            break
+                    
+                    # Fallback to random dst dir
+                    if not dstdir or dstdir == '':
+                        dstdir = random.choice(dst_dirs)
 
             log_file_path = log_cfg.create_plot_log_path(time=pendulum.now())
 
